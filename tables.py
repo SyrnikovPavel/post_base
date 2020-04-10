@@ -8,6 +8,7 @@ db = SqliteDatabase(db_file)
 
 class Good(Model):
     unique_key = TextField(unique=True, verbose_name="Уникальный ключ")
+    signDate = DateTimeField(verbose_name="Дата публикации")
     notificationNumber = TextField(unique=False, verbose_name="Номер извещения")
     name = TextField(unique=False, verbose_name="Наименование поставщика")
     inn = IntegerField(unique=False, verbose_name="ИНН Поставщика")
