@@ -4,6 +4,8 @@ from lxml import etree
 from ftplib import FTP
 from zipfile import ZipFile
 from tables import *
+import traceback
+import sys
 import os
 import datetime
 
@@ -84,6 +86,8 @@ def get_data_from_xml(file: str):
                 sum_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR').text)
 
             name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text
+            
+            OKPD2 = '99.00.10'
             if product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2') is not None:
                 OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2').find('{http://zakupki.gov.ru/oos/types/1}code').text
             elif product.find('{http://zakupki.gov.ru/oos/types/1}KTRU') is not None:
@@ -221,8 +225,9 @@ def main():
         data_source = []
         for file in files_in_archive:
             filename = folder_with_files + file
-            new_data = get_data_from_xml(folder_with_files + file) # получаем данные из xml файла
 
+            new_data = get_data_from_xml(folder_with_files + file) # получаем данные из xml файла
+                
             if new_data is not None:
                 data_source += new_data # добавляем в массив, если в файле были данные
 
@@ -233,7 +238,8 @@ def main():
                         Good.insert_many(batch).on_conflict_replace().execute()
                 data_source = []
             os.remove(filename) # удаляем файл
-
+            
+                    
         if data_source != []:
             with db.atomic():
                 for batch in chunked(data_source, 20):
