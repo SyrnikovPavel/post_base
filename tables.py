@@ -25,6 +25,17 @@ class Good(Model):
         database = db
 
 
+class Archive(Model):
+    name = TextField(unique=True, verbose_name="Наименование архива")
+    download_bool = BooleanField(verbose_name="Скачивание")
+    unzip_bool = BooleanField(verbose_name="Разархивирование")
+    update_all_bool = BooleanField(verbose_name="Обновление")
+    
+    class Meta:
+        database = db
+        
+
 db.create_tables([
     Good,
+    Archive
 ])
