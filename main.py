@@ -18,15 +18,19 @@ def get_data_from_xml(file: str):
 
     data = []
     
-    if [protdate for protdate in root.iter('{http://zakupki.gov.ru/oos/types/1}protocolDate')] == []:
-
+    if [protdate for protdate in root.iter('{http://zakupki.gov.ru/oos/types/1}protocolDate')] != []:
+        signDate = datetime.datetime.strptime(str([protdate for protdate in root.iter('{http://zakupki.gov.ru/oos/types/1}protocolDate')][0].text)[:10], '%Y-%m-%d') 
+    else:
         signDate = datetime.datetime.strptime(str([x for x in root.iter('{http://zakupki.gov.ru/oos/types/1}signDate')][0].text)[:10], '%Y-%m-%d') 
+
+    if [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')] != []:
         supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityRF')
         notificationNumber = str([x for x in root.iter('{http://zakupki.gov.ru/oos/types/1}id')][0].text)
-        
+
+
         if supplier is not None:
             name = supplier.find('{http://zakupki.gov.ru/oos/types/1}fullName').text
-            
+
         elif [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState') is not None:
             supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState')
             name = supplier.find('{http://zakupki.gov.ru/oos/types/1}fullName').text
@@ -47,27 +51,46 @@ def get_data_from_xml(file: str):
                 middle_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName').text
 
             name = last_name + first_name + middle_name
-        
+            
+        elif [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState') is not None:
+            supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState')
+
+            last_name = ''
+            if supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName') is not None:
+                last_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName').text
+
+            first_name = ''
+            if supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName') is not None:
+                first_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName').text
+
+            middle_name = ''
+            if supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName') is not None:
+                middle_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName').text
+
+            name = last_name + first_name + middle_name
+
+        inn = int(0)
         if supplier.find('{http://zakupki.gov.ru/oos/types/1}taxPayerCode') is not None:
             inn = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}taxPayerCode').text)
         else:
-            inn = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}INN').text)
-            
+            if supplier.find('{http://zakupki.gov.ru/oos/types/1}INN') is not None:
+                inn = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}INN').text)
+
         kpp = int(0)
         if supplier.find('{http://zakupki.gov.ru/oos/types/1}KPP') is not None:
             kpp = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}KPP').text)
-          
+
         if supplier.find('{http://zakupki.gov.ru/oos/types/1}address') is not None:
             address = supplier.find('{http://zakupki.gov.ru/oos/types/1}address').text
         elif len([address for address in root.iter('{http://zakupki.gov.ru/oos/types/1}address')]) > 0:
             address = [address for address in root.iter('{http://zakupki.gov.ru/oos/types/1}address')][0]
-        
+
         if supplier.find('{http://zakupki.gov.ru/oos/types/1}contactPhone') is not None:
             phone = supplier.find('{http://zakupki.gov.ru/oos/types/1}contactPhone').text
         elif len([phone for phone in root.iter('{http://zakupki.gov.ru/oos/types/1}contactPhone')]) > 0:
             phone = [phone for phone in root.iter('{http://zakupki.gov.ru/oos/types/1}contactPhone')][0]
-        
-        
+
+
         email = ''
         if supplier.find('{http://zakupki.gov.ru/oos/types/1}contactEMail') is not None:
             email = supplier.find('{http://zakupki.gov.ru/oos/types/1}contactEMail').text
@@ -75,7 +98,7 @@ def get_data_from_xml(file: str):
             email =[email for email in root.iter('{http://zakupki.gov.ru/oos/types/1}contactEMail')][0]
 
         for product in root.iter('{http://zakupki.gov.ru/oos/types/1}product'):
-            
+
             if product.find('{http://zakupki.gov.ru/oos/types/1}priceRUR') is not None:
                 price_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}priceRUR').text)
             else:
@@ -85,8 +108,8 @@ def get_data_from_xml(file: str):
             if product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR') is not None:
                 sum_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR').text)
 
-            name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text
-            
+            name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text.lower().replace('\n', '')
+
             OKPD2 = '99.00.10'
             if product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2') is not None:
                 OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2').find('{http://zakupki.gov.ru/oos/types/1}code').text
@@ -99,22 +122,22 @@ def get_data_from_xml(file: str):
             unique_key = str(notificationNumber) + '_' + str(name_product) + '_' + str(sum_product)
 
             row = {
-                'unique_key': unique_key,
-                'signDate': signDate,
-                'notificationNumber': notificationNumber,
-                'name': name,
-                'inn': inn,
-                'kpp': kpp,
-                'address': address,
-                'phone': phone,
-                'email': email,
-                'name_product': name_product,
-                'OKPD2': OKPD2,
-                'price_product': price_product,
-                'sum_product': sum_product,
-            }
+                    'unique_key': unique_key,
+                    'signDate': signDate,
+                    'notificationNumber': notificationNumber,
+                    'name': name,
+                    'inn': inn,
+                    'kpp': kpp,
+                    'address': address,
+                    'phone': phone,
+                    'email': email,
+                    'name_product': name_product,
+                    'OKPD2': OKPD2,
+                    'price_product': price_product,
+                    'sum_product': sum_product,
+                }
             data.append(row)
-        
+
         return data
     
 def get_files_from_zipfile(filename: str):
@@ -225,12 +248,15 @@ def main():
         data_source = []
         for file in files_in_archive:
             filename = folder_with_files + file
-
-            new_data = get_data_from_xml(folder_with_files + file) # получаем данные из xml файла
-                
+            try:
+                new_data = get_data_from_xml(folder_with_files + file) # получаем данные из xml файла
+            except:
+                print(filename)
+                traceback.print_exc()
+                sys.exit()
             if new_data is not None:
                 data_source += new_data # добавляем в массив, если в файле были данные
-
+            
             # добавляем данные в базу
             if len(data_source) >= 300:
                 with db.atomic():

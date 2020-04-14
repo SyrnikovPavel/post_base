@@ -2,3 +2,4 @@ contracts/
 __pycache__
 .ipynb_checkpoints
 read_xml.ipynb
+database.db
