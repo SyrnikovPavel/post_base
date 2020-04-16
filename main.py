@@ -9,134 +9,229 @@ import sys
 import os
 import datetime
 
+def find_xml(search_string: str, root: etree._Element):
+    "Фукнция для поиска элемента по его названию"
+    anwser = [element for element in root.iter(search_string)]
+    assert len(anwser) < 2, "Element must be unique"
+    if len(anwser) == 1:
+        return anwser[0]
+    
+def lfm_name(root: etree._Element):
+    "Возвращает name для ИП"
+    if root is not None:
+        return root.text
+    else:
+        return ''
+    
+def find_supplier(root: etree._Element):
+    "Функция возвращает продавца"
+    supplier = find_xml('{http://zakupki.gov.ru/oos/types/1}supplier', root)
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}legalEntityRF', supplier) is not None:
+        supplier = find_xml('{http://zakupki.gov.ru/oos/types/1}legalEntityRF', supplier)
+    elif find_xml('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState', supplier) is not None:
+        supplier = find_xml('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState', supplier)
+    elif find_xml('{http://zakupki.gov.ru/oos/types/1}individualPersonRF', supplier) is not None:
+        supplier = find_xml('{http://zakupki.gov.ru/oos/types/1}individualPersonRF', supplier)
+    elif find_xml('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState', supplier) is not None:
+        supplier = find_xml('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState', supplier)   
+        
+    return supplier
+
+def find_name(supplier: etree._Element):
+    "Функция возвращает название организации"
+    name = ''
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}fullName', supplier) is not None:
+        name = find_xml('{http://zakupki.gov.ru/oos/types/1}fullName', supplier).text
+    else:
+        last_name = lfm_name(find_xml('{http://zakupki.gov.ru/oos/types/1}lastName', supplier))
+        first_name = lfm_name(find_xml('{http://zakupki.gov.ru/oos/types/1}firstName', supplier))
+        middle_name = lfm_name(find_xml('{http://zakupki.gov.ru/oos/types/1}middleName', supplier))
+
+        name = last_name + ' ' + first_name + ' ' + middle_name
+    
+    return name
+
+def find_inn(supplier: etree._Element):
+    "Возвращает ИНН"
+    inn = int(0)
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}taxPayerCode', supplier) is not None:
+        raw_inn = find_xml('{http://zakupki.gov.ru/oos/types/1}taxPayerCode', supplier).text.replace(' ', '')
+        if raw_inn.isdigit():
+            inn = int(raw_inn)
+    elif find_xml('{http://zakupki.gov.ru/oos/types/1}INN', supplier) is not None:
+        raw_inn = find_xml('{http://zakupki.gov.ru/oos/types/1}INN', supplier).text.replace(' ', '')
+        if raw_inn.isdigit():
+            inn = int(raw_inn)
+    return inn
+
+def find_kpp(supplier: etree._Element):
+    "Функция возвращает КПП"
+    kpp = int(0)
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}KPP', supplier) is not None:
+        raw_kpp = find_xml('{http://zakupki.gov.ru/oos/types/1}KPP', supplier).text.replace(' ', '')
+        if raw_kpp.isdigit():
+            kpp = int(raw_kpp)
+    return kpp
+
+def find_string(string: str, supplier: etree._Element):
+    "Функция ведет поиск и возращает пустую строку есть нет результата"
+    answer = ''
+    if find_xml(string, supplier) is not None:
+        answer = find_xml(string, supplier).text
+    return answer
+
+def find_address(supplier: etree._Element):
+    "Функция возвращает адрес"
+    addresses = [element for element in supplier.iter('{http://zakupki.gov.ru/oos/types/1}address')]
+    if len(addresses) == 0:
+        address = ''
+    else:
+        address = addresses[0].text
+    return address
+
+def find_phone(supplier: etree._Element):
+    "Функция возвращает телефон"
+    phones = [element for element in supplier.iter('{http://zakupki.gov.ru/oos/types/1}contactPhone')]
+    if len(phones) == 0:
+        phone = ''
+    else:
+        phone = phones[0].text
+    return phone
+
+def find_email(supplier: etree._Element):
+    "Функция возвращает емэйл"
+    emails = [element for element in supplier.iter('{http://zakupki.gov.ru/oos/types/1}contactEMail')]
+    if len(emails) == 0:
+        email = ''
+    else:
+        email = emails[0].text
+    return email
+
+def find_date(root: etree._Element):
+    "Функция возвращает дату документа"
+    signDate = datetime.datetime.today()
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}protocolDate', root) is not None:
+        signDate = datetime.datetime.strptime(str(find_xml('{http://zakupki.gov.ru/oos/types/1}protocolDate', root).text)[:10], '%Y-%m-%d') 
+    else:
+        signDate = datetime.datetime.strptime(str(find_xml('{http://zakupki.gov.ru/oos/types/1}signDate', root).text)[:10], '%Y-%m-%d') 
+    return signDate
+
+def find_price(product: etree._Element):
+    "Функция возвращает цену товара"
+    price_product = float(0)
+    if find_xml('{http://zakupki.gov.ru/oos/types/1}priceRUR', product) is not None:
+        price_product = float(find_xml('{http://zakupki.gov.ru/oos/types/1}priceRUR', product).text)
+    else:
+        price_product = float(find_xml('{http://zakupki.gov.ru/oos/types/1}price', product).text)
+    return price_product
+
+def find_OKPD2(product: etree._Element):
+    "Функция возвращает код ОКПД2"
+    OKPD2 = '99.00.10'
+    if product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2') is not None:
+        OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2').find('{http://zakupki.gov.ru/oos/types/1}code').text
+    elif product.find('{http://zakupki.gov.ru/oos/types/1}KTRU') is not None:
+        KTRU = product.find('{http://zakupki.gov.ru/oos/types/1}KTRU').find('{http://zakupki.gov.ru/oos/types/1}code').text
+        OKPD2 = KTRU[:KTRU.find('-')]
+    elif product.find('{http://zakupki.gov.ru/oos/types/1}OKPD') is not None:
+        OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD').find('{http://zakupki.gov.ru/oos/types/1}code').text
+    return OKPD2
+
 def get_data_from_xml(file: str):
     "Функция принимает на вход xml файл и возвращает данные"
 
     with open(file, 'r', encoding="utf8") as fobj:
         xml = fobj.read()
         root = etree.fromstring(xml.encode('utf-8'))
-
-    data = []
     
-    if [protdate for protdate in root.iter('{http://zakupki.gov.ru/oos/types/1}protocolDate')] != []:
-        signDate = datetime.datetime.strptime(str([protdate for protdate in root.iter('{http://zakupki.gov.ru/oos/types/1}protocolDate')][0].text)[:10], '%Y-%m-%d') 
-    else:
-        signDate = datetime.datetime.strptime(str([x for x in root.iter('{http://zakupki.gov.ru/oos/types/1}signDate')][0].text)[:10], '%Y-%m-%d') 
+    if len([element for element in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')]) >= 1:
+        
+        data = []
+        
+        signDate = find_date(root)
+        notificationNumber = str(find_xml('{http://zakupki.gov.ru/oos/types/1}id', root).text)
+        
+        if len([element for element in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')]) == 1:
+        
+            supplier = find_supplier(root)
+            name = find_name(supplier)
+            inn = find_inn(supplier)
+            kpp = find_kpp(supplier)
+            address = find_address(supplier)
+            phone = find_phone(supplier)
+            email = find_email(supplier)
 
-    if [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')] != []:
-        supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityRF')
-        notificationNumber = str([x for x in root.iter('{http://zakupki.gov.ru/oos/types/1}id')][0].text)
-
-
-        if supplier is not None:
-            name = supplier.find('{http://zakupki.gov.ru/oos/types/1}fullName').text
-
-        elif [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState') is not None:
-            supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}legalEntityForeignState')
-            name = supplier.find('{http://zakupki.gov.ru/oos/types/1}fullName').text
-
-        elif [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonRF') is not None:
-            supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonRF')
-
-            last_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName') is not None:
-                last_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName').text
-
-            first_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName') is not None:
-                first_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName').text
-
-            middle_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName') is not None:
-                middle_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName').text
-
-            name = last_name + first_name + middle_name
             
-        elif [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState') is not None:
-            supplier = [suppliers for suppliers in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier')][0].find('{http://zakupki.gov.ru/oos/types/1}individualPersonForeignState')
+            for product in root.iter('{http://zakupki.gov.ru/oos/types/1}product'):
+                
+                price_product = find_price(product)
 
-            last_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName') is not None:
-                last_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}lastName').text
+                sum_product = price_product
+                if product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR') is not None:
+                    sum_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR').text)
+                
+                name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text.lower().replace('\n', '')
+                OKPD2 = find_OKPD2(product)
+                unique_key = str(notificationNumber) + '_' + str(name_product) + '_' + str(sum_product)
 
-            first_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName') is not None:
-                first_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}firstName').text
-
-            middle_name = ''
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName') is not None:
-                middle_name = supplier.find('{http://zakupki.gov.ru/oos/types/1}middleName').text
-
-            name = last_name + first_name + middle_name
-
-        inn = int(0)
-        if supplier.find('{http://zakupki.gov.ru/oos/types/1}taxPayerCode') is not None:
-            inn = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}taxPayerCode').text)
+                row = {
+                        'unique_key': unique_key,
+                        'signDate': signDate,
+                        'notificationNumber': notificationNumber,
+                        'name': name,
+                        'inn': inn,
+                        'kpp': kpp,
+                        'address': address,
+                        'phone': phone,
+                        'email': email,
+                        'name_product': name_product,
+                        'OKPD2': OKPD2,
+                        'price_product': price_product,
+                        'sum_product': sum_product,
+                    }
+                data.append(row)
+        
         else:
-            if supplier.find('{http://zakupki.gov.ru/oos/types/1}INN') is not None:
-                inn = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}INN').text)
+            for supp in root.iter('{http://zakupki.gov.ru/oos/types/1}supplier'):
+                
+                supplier = find_supplier(supp)
+                name = find_name(supplier)
+                inn = find_inn(supplier)
+                kpp = find_kpp(supplier)
+                address = find_address(supplier)
+                phone = find_phone(supplier)
+                email = find_email(supplier)
 
-        kpp = int(0)
-        if supplier.find('{http://zakupki.gov.ru/oos/types/1}KPP') is not None:
-            kpp = int(supplier.find('{http://zakupki.gov.ru/oos/types/1}KPP').text)
+                
+                for product in root.iter('{http://zakupki.gov.ru/oos/types/1}product'):
+                    
+                    price_product = find_price(product)
 
-        if supplier.find('{http://zakupki.gov.ru/oos/types/1}address') is not None:
-            address = supplier.find('{http://zakupki.gov.ru/oos/types/1}address').text
-        elif len([address for address in root.iter('{http://zakupki.gov.ru/oos/types/1}address')]) > 0:
-            address = [address for address in root.iter('{http://zakupki.gov.ru/oos/types/1}address')][0]
+                    sum_product = price_product
+                    if product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR') is not None:
+                        sum_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR').text)
+                    
+                    name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text.lower().replace('\n', '')
+                    OKPD2 = find_OKPD2(product)
+                    unique_key = str(notificationNumber) + '_' + str(name_product) + '_' + str(sum_product)
 
-        if supplier.find('{http://zakupki.gov.ru/oos/types/1}contactPhone') is not None:
-            phone = supplier.find('{http://zakupki.gov.ru/oos/types/1}contactPhone').text
-        elif len([phone for phone in root.iter('{http://zakupki.gov.ru/oos/types/1}contactPhone')]) > 0:
-            phone = [phone for phone in root.iter('{http://zakupki.gov.ru/oos/types/1}contactPhone')][0]
-
-
-        email = ''
-        if supplier.find('{http://zakupki.gov.ru/oos/types/1}contactEMail') is not None:
-            email = supplier.find('{http://zakupki.gov.ru/oos/types/1}contactEMail').text
-        elif len([email for email in root.iter('{http://zakupki.gov.ru/oos/types/1}contactEMail')]) > 0:
-            email =[email for email in root.iter('{http://zakupki.gov.ru/oos/types/1}contactEMail')][0]
-
-        for product in root.iter('{http://zakupki.gov.ru/oos/types/1}product'):
-
-            if product.find('{http://zakupki.gov.ru/oos/types/1}priceRUR') is not None:
-                price_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}priceRUR').text)
-            else:
-                price_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}price').text)
-
-            sum_product = price_product
-            if product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR') is not None:
-                sum_product = float(product.find('{http://zakupki.gov.ru/oos/types/1}sumRUR').text)
-
-            name_product = product.find('{http://zakupki.gov.ru/oos/types/1}name').text.lower().replace('\n', '')
-
-            OKPD2 = '99.00.10'
-            if product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2') is not None:
-                OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD2').find('{http://zakupki.gov.ru/oos/types/1}code').text
-            elif product.find('{http://zakupki.gov.ru/oos/types/1}KTRU') is not None:
-                KTRU = product.find('{http://zakupki.gov.ru/oos/types/1}KTRU').find('{http://zakupki.gov.ru/oos/types/1}code').text
-                OKPD2 = KTRU[:KTRU.find('-')]
-            elif product.find('{http://zakupki.gov.ru/oos/types/1}OKPD') is not None:
-                OKPD2 = product.find('{http://zakupki.gov.ru/oos/types/1}OKPD').find('{http://zakupki.gov.ru/oos/types/1}code').text
-
-            unique_key = str(notificationNumber) + '_' + str(name_product) + '_' + str(sum_product)
-
-            row = {
-                    'unique_key': unique_key,
-                    'signDate': signDate,
-                    'notificationNumber': notificationNumber,
-                    'name': name,
-                    'inn': inn,
-                    'kpp': kpp,
-                    'address': address,
-                    'phone': phone,
-                    'email': email,
-                    'name_product': name_product,
-                    'OKPD2': OKPD2,
-                    'price_product': price_product,
-                    'sum_product': sum_product,
-                }
-            data.append(row)
+                    row = {
+                            'unique_key': unique_key,
+                            'signDate': signDate,
+                            'notificationNumber': notificationNumber,
+                            'name': name,
+                            'inn': inn,
+                            'kpp': kpp,
+                            'address': address,
+                            'phone': phone,
+                            'email': email,
+                            'name_product': name_product,
+                            'OKPD2': OKPD2,
+                            'price_product': price_product,
+                            'sum_product': sum_product,
+                        }
+                    data.append(row)
+            
 
         return data
     
@@ -213,15 +308,14 @@ def download_all_zip_file_from_ftp(host='ftp.zakupki.gov.ru', user='free', passw
     return 0
 
 
-def main():
+def main(folder_ftp='/fcs_regions/Tjumenskaja_obl/contracts'):
     "Основной цикл программы"
-    folder_ftp = '/fcs_regions/Tjumenskaja_obl/contracts'
+    
     folder_with_archives = 'contracts/zip_files/'
     folder_with_files = 'contracts/unzip_files2/'
 
-
     # Обновление архивов
-    files = get_all_zip_files_from_ftp()
+    files = get_all_zip_files_from_ftp(folder=folder_ftp)
     update_zip_files_in_base(files)
 
     not_update_arch = [archive for archive in Archive.select().where(Archive.update_all_bool == False)] # получаем не обновленные архивы
@@ -279,4 +373,4 @@ def main():
         
         
 if __name__ == '__main__':
-    main()
+    main(folder_ftp='/fcs_regions/Sverdlovskaja_obl/contracts')

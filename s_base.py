@@ -3,6 +3,17 @@ import datetime
 import argparse
 from tables import *
 
+def pro_contains(query, name_product):
+    "Функция для отбора нужных позиций"
+    if len(query.split(' ')) > 1:
+        other_words = query.split(' ')[1:]
+        for word in other_words:
+            if word not in name_product:
+                return False
+        return True
+    else:
+        return True
+
 parser = argparse.ArgumentParser(description='Поиск среди победителей тендеров')
 parser.add_argument('-q', '--query',  action='store', dest='query', help='Поисковое слово')
 parser.add_argument('-cs', action='store', dest='c_sum', help='Коэффициент суммы', default=30)
@@ -10,14 +21,17 @@ parser.add_argument('-cd', action='store', dest='c_date', help='Коэффици
 args = parser.parse_args()
 
 
-c_sum = args.c_sum
-c_date = args.c_date
-query = args.query
+c_sum = float(args.c_sum)
+c_date = float(args.c_date)
+query = args.query.lower()
 
 total = c_sum + c_date
 
 coef_sum = c_sum / total
 coef_date = c_date / total
+
+
+search_query = query.split(' ')[0]
 
 data = [[
     x.name_product, 
@@ -27,7 +41,7 @@ data = [[
     x.inn,
     x.email,
     x.phone,
-] for x in Good.select().where(Good.name_product.contains(query))]
+] for x in Good.select().where(Good.name_product.contains(search_query)) if pro_contains(query, x.name_product)]
 
 if data != []:
 
