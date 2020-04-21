@@ -4,6 +4,7 @@ from lxml import etree
 from ftplib import FTP
 from zipfile import ZipFile
 from tables import *
+import time
 import traceback
 import sys
 import os
@@ -104,7 +105,7 @@ def find_email(supplier: etree._Element):
     if len(emails) == 0:
         email = ''
     else:
-        email = emails[0].text
+        email = emails[0].text.lower()
     return email
 
 def find_date(root: etree._Element):
@@ -267,7 +268,10 @@ def get_all_zip_files_from_ftp(host='ftp.zakupki.gov.ru', user='free', passwd='f
     ftp = FTP(host=host)
     ftp.login(user=user, passwd=passwd)
     ftp.cwd(folder)
-    return [file for file in ftp.nlst() if ((file[-4:]=='.zip') & ('2014' not in file))]
+    files = [file for file in ftp.nlst() if ((file[-4:]=='.zip') & ('2014' not in file))]
+    ftp.quit()
+    time.sleep(5)
+    return files
 
 
 def update_zip_files_in_base(files: list):
@@ -291,6 +295,7 @@ def download_zip_file_from_ftp(filename, host='ftp.zakupki.gov.ru', user='free',
     if os.path.exists(outfile) is False:
         with open(outfile, 'wb') as f:
             ftp.retrbinary('RETR ' + filename, f.write)
+    ftp.quit()
     return 0
 
 def download_all_zip_file_from_ftp(host='ftp.zakupki.gov.ru', user='free', passwd='free', folder='/fcs_regions/Tjumenskaja_obl/contracts', outfolder='C:/projects/post_base/contracts/zip_files/'):
@@ -373,4 +378,5 @@ def main(folder_ftp='/fcs_regions/Tjumenskaja_obl/contracts'):
         
         
 if __name__ == '__main__':
+    main()
     main(folder_ftp='/fcs_regions/Sverdlovskaja_obl/contracts')
